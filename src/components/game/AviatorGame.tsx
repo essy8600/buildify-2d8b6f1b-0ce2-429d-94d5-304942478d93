@@ -1,7 +1,6 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useGame } from '@/context/GameContext';
-import { motion } from 'framer-motion';
 
 const AviatorGame: React.FC = () => {
   const { gameState, history } = useGame();
@@ -130,32 +129,25 @@ const AviatorGame: React.FC = () => {
       
       {/* Multiplier display */}
       <div className="absolute top-4 left-0 right-0 flex justify-center">
-        <motion.div 
+        <div 
           className={`text-4xl font-bold ${
             gameState.status === 'crashed' ? 'text-red-500' : 'text-green-400'
+          } transition-transform duration-500 ${
+            gameState.status === 'flying' ? 'animate-pulse' : ''
           }`}
-          animate={{ 
-            scale: gameState.status === 'flying' ? [1, 1.1, 1] : 1 
-          }}
-          transition={{ 
-            repeat: gameState.status === 'flying' ? Infinity : 0, 
-            duration: 0.5 
-          }}
         >
           {gameState.currentMultiplier.toFixed(2)}x
-        </motion.div>
+        </div>
       </div>
       
       {/* Countdown display */}
       {gameState.status === 'waiting' && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <motion.div 
-            className="text-6xl font-bold text-white"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ repeat: Infinity, duration: 1 }}
+          <div 
+            className="text-6xl font-bold text-white animate-pulse"
           >
             {gameState.countdown}
-          </motion.div>
+          </div>
           <div className="text-center text-white mt-2">Next round starting...</div>
         </div>
       )}

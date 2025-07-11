@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { GameState, Bet } from '@/types';
 import { useAuth } from './AuthContext';
-import { v4 as uuidv4 } from 'uuid';
 
 interface GameContextType {
   gameState: GameState;
@@ -149,7 +148,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (user.balance < amount) return;
     
     const newBet: Bet = {
-      id: uuidv4(),
+      id: Math.random().toString(36).substring(2, 15),
       amount,
       autoCashout,
       potentialWin: 0, // Will be calculated based on cashout
