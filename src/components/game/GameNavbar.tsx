@@ -15,6 +15,16 @@ const GameNavbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  // Create a safe user object with default values
+  const safeUser = user ? {
+    id: user.id || '1',
+    email: user.email || '',
+    phone: user.phone || '',
+    balance: typeof user.balance === 'number' ? user.balance : 0,
+    bonus: typeof user.bonus === 'number' ? user.bonus : 0,
+    pendingWithdrawals: typeof user.pendingWithdrawals === 'number' ? user.pendingWithdrawals : 0
+  } : null;
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -28,7 +38,7 @@ const GameNavbar: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
-          {user ? (
+          {safeUser ? (
             <>
               <Button 
                 variant="ghost" 
@@ -51,11 +61,9 @@ const GameNavbar: React.FC = () => {
                 <Link to="/wallet">
                   <Wallet className="h-5 w-5 mb-1" />
                   Wallet
-                  {user && (
-                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full px-1">
-                      {user.balance.toFixed(0)}
-                    </span>
-                  )}
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full px-1">
+                    {safeUser.balance.toFixed(0)}
+                  </span>
                 </Link>
               </Button>
               

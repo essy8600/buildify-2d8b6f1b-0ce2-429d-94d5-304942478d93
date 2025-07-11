@@ -1,8 +1,8 @@
 
 export interface User {
   id: string;
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
   balance: number;
   bonus: number;
   pendingWithdrawals: number;

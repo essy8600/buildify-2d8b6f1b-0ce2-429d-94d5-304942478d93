@@ -28,10 +28,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // For demo purposes, we'll use localStorage to simulate persistence
         const storedUser = localStorage.getItem('aviator_user');
         if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            // Ensure all required properties exist
+            setUser({
+              id: parsedUser.id || '1',
+              email: parsedUser.email || '',
+              phone: parsedUser.phone || '',
+              balance: typeof parsedUser.balance === 'number' ? parsedUser.balance : 1000,
+              bonus: typeof parsedUser.bonus === 'number' ? parsedUser.bonus : 0,
+              pendingWithdrawals: typeof parsedUser.pendingWithdrawals === 'number' ? parsedUser.pendingWithdrawals : 0
+            });
+          } catch (parseError) {
+            console.error('Error parsing stored user:', parseError);
+            setUser(null);
+          }
         }
       } catch (error) {
         console.error('Error checking user:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -55,6 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser({
           id: '1',
           email,
+          phone: '',
           balance: 1000,
           bonus: 0,
           pendingWithdrawals: 0
@@ -74,6 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (phone && password) {
         setUser({
           id: '1',
+          email: '',
           phone,
           balance: 1000,
           bonus: 0,

@@ -30,8 +30,6 @@ const WalletOverview: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
   const handleDeposit = () => {
-    if (!user) return;
-    
     const amount = parseFloat(depositAmount);
     if (isNaN(amount) || amount <= 0) {
       toast({
@@ -74,8 +72,6 @@ const WalletOverview: React.FC = () => {
   };
   
   const handleWithdraw = () => {
-    if (!user) return;
-    
     const amount = parseFloat(withdrawAmount);
     if (isNaN(amount) || amount <= 0) {
       toast({
@@ -86,7 +82,7 @@ const WalletOverview: React.FC = () => {
       return;
     }
     
-    if (amount > user.balance) {
+    if (amount > safeUser.balance) {
       toast({
         title: "Insufficient funds",
         description: "You don't have enough balance for this withdrawal",
@@ -97,23 +93,22 @@ const WalletOverview: React.FC = () => {
     
     setIsProcessing(true);
     
+    // Find the provider name safely
+    const providerName = paymentProviders.find(p => p.id === selectedWithdrawProvider)?.name || 'selected provider';
+    
     // Simulate API call to PesaPal
     setTimeout(() => {
       updateBalance(-amount);
       setIsProcessing(false);
       toast({
         title: "Withdrawal Initiated",
-        description: `KES ${amount.toFixed(2)} will be sent to your ${
-          paymentProviders.find(p => p.id === selectedWithdrawProvider)?.name
-        } account`,
+        description: `KES ${amount.toFixed(2)} will be sent to your ${providerName} account`,
         variant: "success"
       });
     }, 3000);
   };
   
   const handleClaimBonus = () => {
-    if (!user) return;
-    
     claimBonus();
     toast({
       title: "Bonus Claimed",
@@ -130,7 +125,7 @@ const WalletOverview: React.FC = () => {
       
       Domain: blogwriter.uk
       URL: https://blogwriter.uk
-      Owner: ${user?.email || 'User'}
+      Owner: ${safeUser.email || 'User'}
       Date: July 11, 2025
       
       This document certifies the ownership of the above domain.
@@ -166,6 +161,16 @@ const WalletOverview: React.FC = () => {
       </Card>
     );
   }
+  
+  // Ensure user has all required properties
+  const safeUser = {
+    id: user.id || '1',
+    email: user.email || '',
+    phone: user.phone || '',
+    balance: typeof user.balance === 'number' ? user.balance : 0,
+    bonus: typeof user.bonus === 'number' ? user.bonus : 0,
+    pendingWithdrawals: typeof user.pendingWithdrawals === 'number' ? user.pendingWithdrawals : 0
+  };
 
   return (
     <Card className="p-6 bg-gray-800 text-white">
@@ -175,13 +180,13 @@ const WalletOverview: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4 bg-gray-700">
             <h3 className="text-sm text-gray-400">Available Balance</h3>
-            <p className="text-2xl font-bold">{user.balance.toFixed(2)} KES</p>
+            <p className="text-2xl font-bold">{safeUser.balance.toFixed(2)} KES</p>
           </Card>
           
           <Card className="p-4 bg-gray-700">
             <h3 className="text-sm text-gray-400">Bonus Available</h3>
-            <p className="text-2xl font-bold">{user.bonus > 0 ? `${user.bonus.toFixed(2)} KES` : '0.00 KES'}</p>
-            {user.bonus === 0 && (
+            <p className="text-2xl font-bold">{safeUser.bonus > 0 ? `${safeUser.bonus.toFixed(2)} KES` : '0.00 KES'}</p>
+            {safeUser.bonus === 0 && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -195,7 +200,7 @@ const WalletOverview: React.FC = () => {
           
           <Card className="p-4 bg-gray-700">
             <h3 className="text-sm text-gray-400">Pending Withdrawals</h3>
-            <p className="text-2xl font-bold">{user.pendingWithdrawals.toFixed(2)} KES</p>
+            <p className="text-2xl font-bold">{safeUser.pendingWithdrawals.toFixed(2)} KES</p>
           </Card>
         </div>
       </div>
@@ -269,7 +274,7 @@ const WalletOverview: React.FC = () => {
               id="withdraw-amount"
               type="number"
               min="100"
-              max={user.balance.toString()}
+              max={safeUser.balance.toString()}
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               className="bg-gray-700 text-white"
@@ -301,7 +306,7 @@ const WalletOverview: React.FC = () => {
           <Button 
             className="w-full bg-blue-600 hover:bg-blue-700"
             onClick={handleWithdraw}
-            disabled={isProcessing || user.balance <= 0}
+            disabled={isProcessing || safeUser.balance <= 0}
           >
             {isProcessing ? 'Processing...' : 'Withdraw Now'}
           </Button>
