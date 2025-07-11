@@ -6,11 +6,12 @@ import { supabase } from '@/lib/supabase';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ error: any }>;
-  register: (email: string, phone: string, password: string) => Promise<{ error: any }>;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  loginWithPhone: (phone: string, password: string) => Promise<{ error: string | null }>;
+  register: (email: string, phone: string, password: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
-  updateBalance: (newBalance: number) => void;
-  addBonus: () => void;
+  updateBalance: (amount: number) => void;
+  claimBonus: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,80 +20,133 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Simulate fetching user data
   useEffect(() => {
-    // Check for user in localStorage (mock authentication)
-    const storedUser = localStorage.getItem('aviator_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // In a real app, you would check for an existing session
+    const checkUser = async () => {
+      try {
+        // For demo purposes, we'll use localStorage to simulate persistence
+        const storedUser = localStorage.getItem('aviator_user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('Error checking user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
   }, []);
+
+  // Save user to localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('aviator_user', JSON.stringify(user));
+    }
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     try {
-      // Mock authentication
-      const mockUser: User = {
-        id: '1',
-        email,
-        balance: 1000,
-        bonus: 0,
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('aviator_user', JSON.stringify(mockUser));
-      return { error: null };
+      // In a real app, you would verify credentials with Supabase
+      // For demo, we'll create a mock user
+      if (email && password) {
+        setUser({
+          id: '1',
+          email,
+          balance: 1000,
+          bonus: 0,
+          pendingWithdrawals: 0
+        });
+        return { error: null };
+      }
+      return { error: 'Invalid credentials' };
     } catch (error) {
-      return { error };
+      console.error('Login error:', error);
+      return { error: 'Login failed' };
+    }
+  };
+
+  const loginWithPhone = async (phone: string, password: string) => {
+    try {
+      // Similar to email login but with phone
+      if (phone && password) {
+        setUser({
+          id: '1',
+          phone,
+          balance: 1000,
+          bonus: 0,
+          pendingWithdrawals: 0
+        });
+        return { error: null };
+      }
+      return { error: 'Invalid credentials' };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { error: 'Login failed' };
     }
   };
 
   const register = async (email: string, phone: string, password: string) => {
     try {
-      // Mock registration
-      const mockUser: User = {
-        id: '1',
-        email,
-        phone,
-        balance: 1000,
-        bonus: 0,
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('aviator_user', JSON.stringify(mockUser));
-      return { error: null };
+      // In a real app, you would create a user in Supabase
+      if (email && phone && password) {
+        setUser({
+          id: '1',
+          email,
+          phone,
+          balance: 1000,
+          bonus: 0,
+          pendingWithdrawals: 0
+        });
+        return { error: null };
+      }
+      return { error: 'Invalid registration data' };
     } catch (error) {
-      return { error };
+      console.error('Registration error:', error);
+      return { error: 'Registration failed' };
     }
   };
 
   const logout = async () => {
-    localStorage.removeItem('aviator_user');
+    // In a real app, you would sign out from Supabase
     setUser(null);
+    localStorage.removeItem('aviator_user');
   };
 
-  const updateBalance = (newBalance: number) => {
+  const updateBalance = (amount: number) => {
     if (user) {
-      const updatedUser = { ...user, balance: newBalance };
-      setUser(updatedUser);
-      localStorage.setItem('aviator_user', JSON.stringify(updatedUser));
+      setUser({
+        ...user,
+        balance: user.balance + amount
+      });
     }
   };
 
-  const addBonus = () => {
+  const claimBonus = () => {
     if (user) {
-      const bonusAmount = 18000;
-      const updatedUser = { 
-        ...user, 
-        balance: user.balance + bonusAmount,
-        bonus: user.bonus + bonusAmount 
-      };
-      setUser(updatedUser);
-      localStorage.setItem('aviator_user', JSON.stringify(updatedUser));
+      setUser({
+        ...user,
+        bonus: 0,
+        balance: user.balance + 18000 // 100% of KES 18,000
+      });
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateBalance, addBonus }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        loginWithPhone,
+        register,
+        logout,
+        updateBalance,
+        claimBonus
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -5,43 +5,46 @@ export interface User {
   phone?: string;
   balance: number;
   bonus: number;
+  pendingWithdrawals: number;
 }
 
 export interface Bet {
   id: string;
   amount: number;
   autoCashout: number | null;
-  userId: string;
-  gameId: string;
-  status: 'pending' | 'won' | 'lost';
-  cashoutMultiplier?: number;
-  winnings?: number;
-  createdAt: Date;
+  potentialWin: number;
+  active: boolean;
+  cashedOut: boolean;
+  cashoutMultiplier: number | null;
+  winAmount: number | null;
 }
 
-export interface Game {
-  id: string;
+export interface GameState {
+  status: 'waiting' | 'flying' | 'crashed';
+  currentMultiplier: number;
   crashPoint: number;
-  startedAt: Date;
-  endedAt?: Date;
-  status: 'waiting' | 'running' | 'finished';
+  countdown: number;
   round: number;
 }
 
-export interface Withdrawal {
+export interface WithdrawalRequest {
   id: string;
-  userId: string;
   amount: number;
-  status: 'pending' | 'completed' | 'rejected';
   provider: string;
-  createdAt: Date;
+  status: 'pending' | 'completed' | 'failed';
+  date: Date;
 }
 
-export interface Deposit {
+export interface DepositRequest {
   id: string;
-  userId: string;
   amount: number;
-  status: 'pending' | 'completed' | 'rejected';
   provider: string;
-  createdAt: Date;
+  status: 'pending' | 'completed' | 'failed';
+  date: Date;
+}
+
+export interface PaymentProvider {
+  id: string;
+  name: string;
+  logo: string;
 }

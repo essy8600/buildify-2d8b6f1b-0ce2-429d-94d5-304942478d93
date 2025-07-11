@@ -2,39 +2,17 @@
 import React from 'react';
 import GameNavbar from '@/components/game/GameNavbar';
 import WalletOverview from '@/components/wallet/WalletOverview';
-import { useAuth } from '@/context/AuthContext';
-import { Navigate } from 'react-router-dom';
 
 const WalletPage: React.FC = () => {
-  const { user } = useAuth();
-  
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-900 text-white">
       <GameNavbar />
       
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">My Wallet</h1>
-          <WalletOverview />
-        </div>
-      </main>
-      
-      <footer className="border-t py-6">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} Aviator Bet. All rights reserved.
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <a href="https://blogwriter.uk" className="hover:underline">blogwriter.uk</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <div className="container mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold mb-6">Wallet</h1>
+        
+        <WalletOverview />
+      </div>
     </div>
   );
 };

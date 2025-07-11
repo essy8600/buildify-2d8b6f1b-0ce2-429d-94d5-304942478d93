@@ -1,265 +1,319 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGame } from '@/context/GameContext';
 import { useAuth } from '@/context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
 
 const BettingPanel: React.FC = () => {
+  const { gameState, bet1, bet2, placeBet, cashout } = useGame();
   const { user } = useAuth();
-  const { placeBet, cashout, bets, isGameRunning, currentMultiplier } = useGame();
   
   // Bet 1 state
   const [bet1Amount, setBet1Amount] = useState<string>('100');
-  const [bet1AutoCashout, setBet1AutoCashout] = useState<string>('2');
-  const [bet1AutoCashoutEnabled, setBet1AutoCashoutEnabled] = useState<boolean>(false);
+  const [bet1AutoCashout, setBet1AutoCashout] = useState<string>('2.00');
+  const [bet1UseAutoCashout, setBet1UseAutoCashout] = useState<boolean>(false);
   
   // Bet 2 state
   const [bet2Amount, setBet2Amount] = useState<string>('200');
-  const [bet2AutoCashout, setBet2AutoCashout] = useState<string>('3');
-  const [bet2AutoCashoutEnabled, setBet2AutoCashoutEnabled] = useState<boolean>(false);
-  
-  // Get current bets
-  const bet1 = bets.find(bet => bet.id.endsWith('-1'));
-  const bet2 = bets.find(bet => bet.id.endsWith('-2'));
-  
-  // Calculate potential winnings
-  const getPotentialWinnings = (betAmount: string, autoCashout: string, enabled: boolean) => {
-    const amount = parseFloat(betAmount) || 0;
-    const cashout = enabled ? (parseFloat(autoCashout) || 0) : currentMultiplier;
-    return (amount * cashout).toFixed(2);
-  };
+  const [bet2AutoCashout, setBet2AutoCashout] = useState<string>('3.00');
+  const [bet2UseAutoCashout, setBet2UseAutoCashout] = useState<boolean>(false);
 
-  // Handle bet 1 submission
-  const handleBet1Submit = () => {
-    if (!user || isGameRunning) return;
+  const handlePlaceBet = (betNumber: 1 | 2) => {
+    if (!user) return;
     
-    const amount = parseFloat(bet1Amount);
+    const amount = betNumber === 1 
+      ? parseFloat(bet1Amount) 
+      : parseFloat(bet2Amount);
+      
+    const autoCashout = betNumber === 1
+      ? (bet1UseAutoCashout ? parseFloat(bet1AutoCashout) : null)
+      : (bet2UseAutoCashout ? parseFloat(bet2AutoCashout) : null);
+    
     if (isNaN(amount) || amount <= 0) return;
+    if (autoCashout !== null && (isNaN(autoCashout) || autoCashout < 1.01)) return;
     
-    const autoCashout = bet1AutoCashoutEnabled ? parseFloat(bet1AutoCashout) : null;
-    
-    placeBet(amount, autoCashout, 1);
+    placeBet(amount, autoCashout, betNumber);
   };
 
-  // Handle bet 2 submission
-  const handleBet2Submit = () => {
-    if (!user || isGameRunning) return;
-    
-    const amount = parseFloat(bet2Amount);
-    if (isNaN(amount) || amount <= 0) return;
-    
-    const autoCashout = bet2AutoCashoutEnabled ? parseFloat(bet2AutoCashout) : null;
-    
-    placeBet(amount, autoCashout, 2);
+  const handleCashout = (betNumber: 1 | 2) => {
+    cashout(betNumber);
   };
 
-  // Handle cashout for bet 1
-  const handleCashout1 = () => {
-    if (!isGameRunning || !bet1 || bet1.status !== 'pending') return;
-    cashout(1);
-  };
-
-  // Handle cashout for bet 2
-  const handleCashout2 = () => {
-    if (!isGameRunning || !bet2 || bet2.status !== 'pending') return;
-    cashout(2);
+  const calculatePotentialWin = (betAmount: string, multiplier: string): string => {
+    const amount = parseFloat(betAmount);
+    const multi = parseFloat(multiplier);
+    
+    if (isNaN(amount) || isNaN(multi)) return '0.00';
+    
+    return (amount * multi).toFixed(2);
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Place Your Bets</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="bet1" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="bet1">Bet 1</TabsTrigger>
-            <TabsTrigger value="bet2">Bet 2</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="bet1" className="space-y-4">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bet1-amount">Bet Amount</Label>
-                  <Input
-                    id="bet1-amount"
-                    type="number"
-                    min="10"
-                    value={bet1Amount}
-                    onChange={(e) => setBet1Amount(e.target.value)}
-                    disabled={isGameRunning || !!bet1}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="bet1-auto-cashout">Auto Cash-out</Label>
-                    <Switch
-                      id="bet1-auto-cashout-switch"
-                      checked={bet1AutoCashoutEnabled}
-                      onCheckedChange={setBet1AutoCashoutEnabled}
-                      disabled={isGameRunning || !!bet1}
-                    />
-                  </div>
-                  <Input
-                    id="bet1-auto-cashout"
-                    type="number"
-                    min="1.1"
-                    step="0.1"
-                    value={bet1AutoCashout}
-                    onChange={(e) => setBet1AutoCashout(e.target.value)}
-                    disabled={!bet1AutoCashoutEnabled || isGameRunning || !!bet1}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Potential Win:</p>
-                  <p className="text-lg font-bold">
-                    {bet1 && bet1.status === 'pending'
-                      ? `${(bet1.amount * currentMultiplier).toFixed(2)} KES`
-                      : `${getPotentialWinnings(bet1Amount, bet1AutoCashout, bet1AutoCashoutEnabled)} KES`}
-                  </p>
-                </div>
-                
-                {bet1 && bet1.status === 'won' && (
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Won:</p>
-                    <p className="text-lg font-bold text-green-600">
-                      {bet1.winnings?.toFixed(2)} KES @ {bet1.cashoutMultiplier?.toFixed(2)}x
-                    </p>
-                  </div>
-                )}
-                
-                {bet1 && bet1.status === 'lost' && (
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Lost:</p>
-                    <p className="text-lg font-bold text-red-600">
-                      {bet1.amount.toFixed(2)} KES
-                    </p>
-                  </div>
-                )}
-              </div>
-              
-              {!bet1 && (
-                <Button 
-                  onClick={handleBet1Submit} 
-                  disabled={isGameRunning || !user}
-                  className="w-full"
-                >
-                  Place Bet
-                </Button>
-              )}
-              
-              {bet1 && bet1.status === 'pending' && (
-                <Button 
-                  onClick={handleCashout1}
-                  variant="destructive"
-                  className="w-full"
-                  disabled={!isGameRunning}
-                >
-                  Cash Out @ {currentMultiplier.toFixed(2)}x
-                </Button>
-              )}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      {/* Bet 1 */}
+      <Card className="p-4 bg-gray-800 text-white">
+        <h3 className="text-lg font-bold mb-2">Bet 1</h3>
+        
+        {bet1 && bet1.active ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span>Bet Amount:</span>
+              <span>{bet1.amount.toFixed(2)} KES</span>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="bet2" className="space-y-4">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bet2-amount">Bet Amount</Label>
-                  <Input
-                    id="bet2-amount"
-                    type="number"
-                    min="10"
-                    value={bet2Amount}
-                    onChange={(e) => setBet2Amount(e.target.value)}
-                    disabled={isGameRunning || !!bet2}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="bet2-auto-cashout">Auto Cash-out</Label>
-                    <Switch
-                      id="bet2-auto-cashout-switch"
-                      checked={bet2AutoCashoutEnabled}
-                      onCheckedChange={setBet2AutoCashoutEnabled}
-                      disabled={isGameRunning || !!bet2}
-                    />
-                  </div>
-                  <Input
-                    id="bet2-auto-cashout"
-                    type="number"
-                    min="1.1"
-                    step="0.1"
-                    value={bet2AutoCashout}
-                    onChange={(e) => setBet2AutoCashout(e.target.value)}
-                    disabled={!bet2AutoCashoutEnabled || isGameRunning || !!bet2}
-                  />
-                </div>
+            
+            {bet1.autoCashout && (
+              <div className="flex justify-between">
+                <span>Auto Cashout:</span>
+                <span>{bet1.autoCashout.toFixed(2)}x</span>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Potential Win:</p>
-                  <p className="text-lg font-bold">
-                    {bet2 && bet2.status === 'pending'
-                      ? `${(bet2.amount * currentMultiplier).toFixed(2)} KES`
-                      : `${getPotentialWinnings(bet2Amount, bet2AutoCashout, bet2AutoCashoutEnabled)} KES`}
-                  </p>
-                </div>
-                
-                {bet2 && bet2.status === 'won' && (
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Won:</p>
-                    <p className="text-lg font-bold text-green-600">
-                      {bet2.winnings?.toFixed(2)} KES @ {bet2.cashoutMultiplier?.toFixed(2)}x
-                    </p>
-                  </div>
-                )}
-                
-                {bet2 && bet2.status === 'lost' && (
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Lost:</p>
-                    <p className="text-lg font-bold text-red-600">
-                      {bet2.amount.toFixed(2)} KES
-                    </p>
-                  </div>
-                )}
-              </div>
-              
-              {!bet2 && (
-                <Button 
-                  onClick={handleBet2Submit} 
-                  disabled={isGameRunning || !user}
-                  className="w-full"
-                >
-                  Place Bet
-                </Button>
-              )}
-              
-              {bet2 && bet2.status === 'pending' && (
-                <Button 
-                  onClick={handleCashout2}
-                  variant="destructive"
-                  className="w-full"
-                  disabled={!isGameRunning}
-                >
-                  Cash Out @ {currentMultiplier.toFixed(2)}x
-                </Button>
-              )}
+            )}
+            
+            <div className="flex justify-between font-bold">
+              <span>Potential Win:</span>
+              <span>{(bet1.amount * gameState.currentMultiplier).toFixed(2)} KES</span>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            
+            {gameState.status === 'flying' && (
+              <Button 
+                className="w-full bg-green-500 hover:bg-green-600"
+                onClick={() => handleCashout(1)}
+              >
+                Cash Out @ {gameState.currentMultiplier.toFixed(2)}x
+              </Button>
+            )}
+          </div>
+        ) : bet1 && bet1.cashedOut ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span>Bet Amount:</span>
+              <span>{bet1.amount.toFixed(2)} KES</span>
+            </div>
+            
+            <div className="flex justify-between font-bold text-green-400">
+              <span>Cashed Out:</span>
+              <span>{bet1.cashoutMultiplier?.toFixed(2)}x</span>
+            </div>
+            
+            <div className="flex justify-between font-bold text-green-400">
+              <span>Won:</span>
+              <span>{bet1.winAmount?.toFixed(2)} KES</span>
+            </div>
+            
+            <div className="p-3 bg-green-900 bg-opacity-50 rounded text-center">
+              Successfully cashed out!
+            </div>
+          </div>
+        ) : bet1 ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span>Bet Amount:</span>
+              <span>{bet1.amount.toFixed(2)} KES</span>
+            </div>
+            
+            <div className="flex justify-between font-bold text-red-400">
+              <span>Result:</span>
+              <span>Lost</span>
+            </div>
+            
+            <div className="p-3 bg-red-900 bg-opacity-50 rounded text-center">
+              Plane crashed at {gameState.crashPoint.toFixed(2)}x
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bet1-amount">Bet Amount (KES)</Label>
+              <Input
+                id="bet1-amount"
+                type="number"
+                min="10"
+                value={bet1Amount}
+                onChange={(e) => setBet1Amount(e.target.value)}
+                className="bg-gray-700 text-white"
+                disabled={gameState.status !== 'waiting'}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="bet1-auto"
+                checked={bet1UseAutoCashout}
+                onCheckedChange={setBet1UseAutoCashout}
+                disabled={gameState.status !== 'waiting'}
+              />
+              <Label htmlFor="bet1-auto">Auto Cashout</Label>
+            </div>
+            
+            {bet1UseAutoCashout && (
+              <div>
+                <Label htmlFor="bet1-cashout">Auto Cashout at (x)</Label>
+                <Input
+                  id="bet1-cashout"
+                  type="number"
+                  min="1.01"
+                  step="0.01"
+                  value={bet1AutoCashout}
+                  onChange={(e) => setBet1AutoCashout(e.target.value)}
+                  className="bg-gray-700 text-white"
+                  disabled={gameState.status !== 'waiting'}
+                />
+              </div>
+            )}
+            
+            <div className="flex justify-between font-bold">
+              <span>Potential Win:</span>
+              <span>
+                {bet1UseAutoCashout 
+                  ? calculatePotentialWin(bet1Amount, bet1AutoCashout)
+                  : '?'} KES
+              </span>
+            </div>
+            
+            <Button 
+              className="w-full bg-blue-500 hover:bg-blue-600"
+              onClick={() => handlePlaceBet(1)}
+              disabled={gameState.status !== 'waiting' || !user}
+            >
+              Place Bet
+            </Button>
+          </div>
+        )}
+      </Card>
+      
+      {/* Bet 2 */}
+      <Card className="p-4 bg-gray-800 text-white">
+        <h3 className="text-lg font-bold mb-2">Bet 2</h3>
+        
+        {bet2 && bet2.active ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span>Bet Amount:</span>
+              <span>{bet2.amount.toFixed(2)} KES</span>
+            </div>
+            
+            {bet2.autoCashout && (
+              <div className="flex justify-between">
+                <span>Auto Cashout:</span>
+                <span>{bet2.autoCashout.toFixed(2)}x</span>
+              </div>
+            )}
+            
+            <div className="flex justify-between font-bold">
+              <span>Potential Win:</span>
+              <span>{(bet2.amount * gameState.currentMultiplier).toFixed(2)} KES</span>
+            </div>
+            
+            {gameState.status === 'flying' && (
+              <Button 
+                className="w-full bg-green-500 hover:bg-green-600"
+                onClick={() => handleCashout(2)}
+              >
+                Cash Out @ {gameState.currentMultiplier.toFixed(2)}x
+              </Button>
+            )}
+          </div>
+        ) : bet2 && bet2.cashedOut ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span>Bet Amount:</span>
+              <span>{bet2.amount.toFixed(2)} KES</span>
+            </div>
+            
+            <div className="flex justify-between font-bold text-green-400">
+              <span>Cashed Out:</span>
+              <span>{bet2.cashoutMultiplier?.toFixed(2)}x</span>
+            </div>
+            
+            <div className="flex justify-between font-bold text-green-400">
+              <span>Won:</span>
+              <span>{bet2.winAmount?.toFixed(2)} KES</span>
+            </div>
+            
+            <div className="p-3 bg-green-900 bg-opacity-50 rounded text-center">
+              Successfully cashed out!
+            </div>
+          </div>
+        ) : bet2 ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span>Bet Amount:</span>
+              <span>{bet2.amount.toFixed(2)} KES</span>
+            </div>
+            
+            <div className="flex justify-between font-bold text-red-400">
+              <span>Result:</span>
+              <span>Lost</span>
+            </div>
+            
+            <div className="p-3 bg-red-900 bg-opacity-50 rounded text-center">
+              Plane crashed at {gameState.crashPoint.toFixed(2)}x
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bet2-amount">Bet Amount (KES)</Label>
+              <Input
+                id="bet2-amount"
+                type="number"
+                min="10"
+                value={bet2Amount}
+                onChange={(e) => setBet2Amount(e.target.value)}
+                className="bg-gray-700 text-white"
+                disabled={gameState.status !== 'waiting'}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="bet2-auto"
+                checked={bet2UseAutoCashout}
+                onCheckedChange={setBet2UseAutoCashout}
+                disabled={gameState.status !== 'waiting'}
+              />
+              <Label htmlFor="bet2-auto">Auto Cashout</Label>
+            </div>
+            
+            {bet2UseAutoCashout && (
+              <div>
+                <Label htmlFor="bet2-cashout">Auto Cashout at (x)</Label>
+                <Input
+                  id="bet2-cashout"
+                  type="number"
+                  min="1.01"
+                  step="0.01"
+                  value={bet2AutoCashout}
+                  onChange={(e) => setBet2AutoCashout(e.target.value)}
+                  className="bg-gray-700 text-white"
+                  disabled={gameState.status !== 'waiting'}
+                />
+              </div>
+            )}
+            
+            <div className="flex justify-between font-bold">
+              <span>Potential Win:</span>
+              <span>
+                {bet2UseAutoCashout 
+                  ? calculatePotentialWin(bet2Amount, bet2AutoCashout)
+                  : '?'} KES
+              </span>
+            </div>
+            
+            <Button 
+              className="w-full bg-blue-500 hover:bg-blue-600"
+              onClick={() => handlePlaceBet(2)}
+              disabled={gameState.status !== 'waiting' || !user}
+            >
+              Place Bet
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 };
 

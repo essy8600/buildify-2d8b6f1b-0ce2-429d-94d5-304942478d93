@@ -1,59 +1,13 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useGame } from '@/context/GameContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { motion } from 'framer-motion';
 
 const AviatorGame: React.FC = () => {
-  const { currentMultiplier, isGameRunning } = useGame();
+  const { gameState, history } = useGame();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 500 });
-  const planeImage = useRef<HTMLImageElement | null>(null);
-  const cloudImages = useRef<HTMLImageElement[]>([]);
-  const [clouds, setClouds] = useState<{ x: number; y: number; speed: number; image: number }[]>([]);
 
-  // Initialize images
-  useEffect(() => {
-    // Load plane image
-    const plane = new Image();
-    plane.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSJyZWQiIGQ9Ik0xMDUuNiAyNTEuNWMtMjEuOSAyMS45LTIxLjkgNTcuMyAwIDc5LjJsMjEuOSAyMS45YzIxLjkgMjEuOSA1Ny4zIDIxLjkgNzkuMiAwbDIxLjktMjEuOSAyOTIuMy0yOTIuM2M3LjMtNy4zIDcuMy0xOS4xIDAtMjYuNGwtMjEuOS0yMS45Yy03LjMtNy4zLTE5LjEtNy4zLTI2LjQgMEwxODAgMjgyLjdsMjEuOS0yMS45YzIxLjktMjEuOSAyMS45LTU3LjMgMC03OS4yTDE4MCAyNTkuNmwtNzQuNS03NC41LTIxLjkgMjEuOSAyMS45IDIxLjkgMjEuOS0yMS45IDUyLjYgNTIuNi01Mi42IDUyLjYtMjEuOS0yMS45eiIvPjwvc3ZnPg==';
-    planeImage.current = plane;
-
-    // Load cloud images
-    const cloud1 = new Image();
-    cloud1.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNTEyIj48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTUxMiAyNTZjMCA1My0yOC43IDk5LjQtNzEuNSAxMjQuOEMzOTkuOCA0NjcuMiAzMjMuOCA1MTIgMjQwIDUxMkMxMDcuNSA1MTIgMCA0MDQuNiAwIDI3MkMwIDE3MS4zIDY0LjggODUuMyAxNTUuNiA1OS45QzE3MS4xIDI0LjIgMjA3LjkgMCAyNTIgMGM0OS4xIDAgOTIuNyAyNS4xIDExNy44IDYzLjNDMzg0LjUgNzIuOCA0MDAuOCA4MyA0MTkuOCA5NC41QzQ3NC4yIDEwOC41IDUxMiAxNzcuNiA1MTIgMjU2eiIvPjwvc3ZnPg==';
-    const cloud2 = new Image();
-    cloud2.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNTEyIj48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTI4OCAzMkMyMjEuNSAzMiAxNjYuNCA3NS45IDE1Mi44IDEzNi43QzE1MiAxMzYuNyAxNTEuMSAxMzYuNyAxNTAuMiAxMzYuN0M4NC43IDEzNi43IDMyIDE4OS40IDMyIDI1NC45QzMyIDMyMC40IDg0LjcgMzczLjEgMTUwLjIgMzczLjFIMzk1LjhDNDYxLjMgMzczLjEgNTE0IDMyMC40IDUxNCAyNTQuOUM1MTQgMTg5LjQgNDYxLjMgMTM2LjcgMzk1LjggMTM2LjdDMzk0LjkgMTM2LjcgMzk0IDEzNi43IDM5My4yIDEzNi43QzM3OS42IDc1LjkgMzI0LjUgMzIgMjg4IDMyeiIvPjwvc3ZnPg==';
-    cloudImages.current = [cloud1, cloud2];
-
-    // Generate initial clouds
-    const initialClouds = Array.from({ length: 5 }, () => ({
-      x: Math.random() * canvasSize.width,
-      y: Math.random() * canvasSize.height * 0.7,
-      speed: 0.5 + Math.random() * 1.5,
-      image: Math.floor(Math.random() * 2),
-    }));
-    setClouds(initialClouds);
-
-    // Handle resize
-    const handleResize = () => {
-      const container = canvasRef.current?.parentElement;
-      if (container) {
-        setCanvasSize({
-          width: container.clientWidth,
-          height: container.clientHeight,
-        });
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  // Draw the game
+  // Draw the game animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -61,136 +15,168 @@ const AviatorGame: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = canvasSize.width;
-    canvas.height = canvasSize.height;
+    // Set canvas dimensions
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw sky gradient
+    // Draw sky background
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#87CEEB');
-    gradient.addColorStop(1, '#E0F7FF');
+    gradient.addColorStop(0, '#1a237e');
+    gradient.addColorStop(1, '#3949ab');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw clouds
-    if (cloudImages.current.length > 0) {
-      clouds.forEach(cloud => {
-        const img = cloudImages.current[cloud.image];
-        if (img.complete) {
-          ctx.globalAlpha = 0.7;
-          ctx.drawImage(
-            img,
-            cloud.x,
-            cloud.y,
-            80,
-            50
-          );
-          ctx.globalAlpha = 1;
-        }
-      });
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    for (let i = 0; i < 10; i++) {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * (canvas.height / 2);
+      const radius = 20 + Math.random() * 30;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
     }
-
-    // Draw ground
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-    
-    // Draw grass
-    ctx.fillStyle = '#228B22';
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 10);
 
     // Draw runway
-    ctx.fillStyle = '#555555';
-    ctx.fillRect(50, canvas.height - 45, canvas.width - 100, 20);
+    ctx.fillStyle = '#424242';
+    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
     
     // Draw runway markings
-    ctx.fillStyle = '#FFFFFF';
-    for (let i = 60; i < canvas.width - 60; i += 30) {
-      ctx.fillRect(i, canvas.height - 35, 15, 5);
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < canvas.width; i += 40) {
+      ctx.fillRect(i, canvas.height - 30, 20, 5);
     }
 
-    // Draw multiplier
-    ctx.font = 'bold 48px Arial';
-    ctx.fillStyle = isGameRunning ? '#FF0000' : '#333333';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-      isGameRunning ? `${currentMultiplier.toFixed(2)}x` : 'WAITING...',
-      canvas.width / 2,
-      100
-    );
-
-    // Draw plane if game is running
-    if (isGameRunning && planeImage.current && planeImage.current.complete) {
-      // Calculate plane position based on multiplier
+    // Draw airplane if game is flying or crashed
+    if (gameState.status === 'flying' || gameState.status === 'crashed') {
+      // Calculate position based on multiplier
       const maxHeight = canvas.height - 100;
-      const height = Math.min(maxHeight, maxHeight * (1 - Math.log10(currentMultiplier) / 3));
-      const x = 100 + (currentMultiplier - 1) * 50;
-      
-      // Save context for rotation
+      const progress = Math.min(1, Math.log10(gameState.currentMultiplier) / 3);
+      const x = 100 + (canvas.width - 200) * progress;
+      const y = canvas.height - 70 - maxHeight * progress;
+
+      // Draw airplane
       ctx.save();
+      ctx.translate(x, y);
       
-      // Translate to the plane position
-      ctx.translate(x, height);
+      // Rotate airplane based on progress
+      const angle = Math.PI / 6 * progress;
+      ctx.rotate(-angle);
       
-      // Rotate slightly upward
-      const angle = -Math.min(Math.PI / 6, Math.log10(currentMultiplier) / 5);
-      ctx.rotate(angle);
+      // Draw airplane body
+      ctx.fillStyle = gameState.status === 'crashed' ? '#f44336' : '#2196f3';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(30, 0);
+      ctx.lineTo(40, 5);
+      ctx.lineTo(30, 10);
+      ctx.lineTo(0, 10);
+      ctx.closePath();
+      ctx.fill();
       
-      // Draw the plane
-      ctx.drawImage(planeImage.current, -25, -25, 50, 50);
+      // Draw wings
+      ctx.fillStyle = gameState.status === 'crashed' ? '#d32f2f' : '#1976d2';
+      ctx.beginPath();
+      ctx.moveTo(15, 0);
+      ctx.lineTo(5, -15);
+      ctx.lineTo(25, -15);
+      ctx.closePath();
+      ctx.fill();
       
-      // Restore context
+      // Draw tail
+      ctx.beginPath();
+      ctx.moveTo(0, 5);
+      ctx.lineTo(-10, -5);
+      ctx.lineTo(-10, 15);
+      ctx.lineTo(0, 5);
+      ctx.closePath();
+      ctx.fill();
+      
       ctx.restore();
-      
+
       // Draw trail
-      ctx.strokeStyle = '#FF6347';
+      ctx.strokeStyle = gameState.status === 'crashed' ? '#ffccbc' : '#bbdefb';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(50, canvas.height - 35);
+      ctx.moveTo(100, canvas.height - 70);
       
-      // Create a curve for the trail
-      const controlX = 75;
-      const controlY = canvas.height - 50 - (currentMultiplier - 1) * 20;
-      ctx.quadraticCurveTo(controlX, controlY, x, height);
-      
+      // Create a curved path for the trail
+      const controlX = 100 + (x - 100) * 0.5;
+      const controlY = canvas.height - 70 - (canvas.height - 70 - y) * 0.2;
+      ctx.quadraticCurveTo(controlX, controlY, x, y);
       ctx.stroke();
     }
 
-  }, [canvasSize, currentMultiplier, isGameRunning, clouds]);
+    // Draw "CRASHED" text if game has crashed
+    if (gameState.status === 'crashed') {
+      ctx.font = 'bold 48px Arial';
+      ctx.fillStyle = '#f44336';
+      ctx.textAlign = 'center';
+      ctx.fillText('CRASHED', canvas.width / 2, canvas.height / 2);
+    }
 
-  // Move clouds
-  useEffect(() => {
-    if (!isGameRunning) return;
-
-    const interval = setInterval(() => {
-      setClouds(prevClouds => 
-        prevClouds.map(cloud => ({
-          ...cloud,
-          x: cloud.x - cloud.speed,
-          // If cloud moves off screen, reset to right side
-          ...(cloud.x < -100 ? {
-            x: canvasSize.width + 50,
-            y: Math.random() * canvasSize.height * 0.7,
-            speed: 0.5 + Math.random() * 1.5,
-          } : {})
-        }))
-      );
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [isGameRunning, canvasSize.width, canvasSize.height]);
+  }, [gameState]);
 
   return (
-    <Card className="w-full h-[500px] overflow-hidden">
-      <CardContent className="p-0 h-full">
-        <canvas 
-          ref={canvasRef} 
-          className="w-full h-full"
-        />
-      </CardContent>
-    </Card>
+    <div className="relative w-full h-[400px] bg-gray-900 rounded-lg overflow-hidden">
+      {/* Game canvas */}
+      <canvas 
+        ref={canvasRef} 
+        className="w-full h-full"
+      />
+      
+      {/* Multiplier display */}
+      <div className="absolute top-4 left-0 right-0 flex justify-center">
+        <motion.div 
+          className={`text-4xl font-bold ${
+            gameState.status === 'crashed' ? 'text-red-500' : 'text-green-400'
+          }`}
+          animate={{ 
+            scale: gameState.status === 'flying' ? [1, 1.1, 1] : 1 
+          }}
+          transition={{ 
+            repeat: gameState.status === 'flying' ? Infinity : 0, 
+            duration: 0.5 
+          }}
+        >
+          {gameState.currentMultiplier.toFixed(2)}x
+        </motion.div>
+      </div>
+      
+      {/* Countdown display */}
+      {gameState.status === 'waiting' && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <motion.div 
+            className="text-6xl font-bold text-white"
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ repeat: Infinity, duration: 1 }}
+          >
+            {gameState.countdown}
+          </motion.div>
+          <div className="text-center text-white mt-2">Next round starting...</div>
+        </div>
+      )}
+      
+      {/* History display */}
+      <div className="absolute bottom-4 right-4 bg-gray-800 bg-opacity-70 p-2 rounded">
+        <div className="text-xs text-white mb-1">Recent Results:</div>
+        <div className="flex space-x-2">
+          {history.map((result, index) => (
+            <div 
+              key={index}
+              className={`w-10 h-6 rounded flex items-center justify-center text-xs font-bold ${
+                result < 2 ? 'bg-red-500' : 'bg-green-500'
+              }`}
+            >
+              {result.toFixed(2)}x
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 

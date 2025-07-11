@@ -1,84 +1,99 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu';
+import { 
+  Home, 
+  Wallet, 
+  Settings, 
+  LogOut,
+  User
+} from 'lucide-react';
 
 const GameNavbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
-    <div className="border-b">
-      <div className="flex h-16 items-center px-4 container mx-auto">
-        <Link to="/" className="font-bold text-2xl mr-6 flex items-center">
-          <span className="text-red-600">Aviator</span>
-          <span className="ml-1">Bet</span>
-        </Link>
+    <div className="bg-gray-900 text-white p-4 sticky top-0 z-10">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center">
+          <h1 className="text-xl font-bold">Aviator</h1>
+        </div>
         
-        <NavigationMenu className="hidden md:flex">
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <Link to="/">
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                  Home
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-            
-            {user && (
-              <>
-                <NavigationMenuItem>
-                  <Link to="/wallet">
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Wallet
-                    </NavigationMenuLink>
-                  </Link>
-                </NavigationMenuItem>
-                
-                <NavigationMenuItem>
-                  <Link to="/settings">
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Settings
-                    </NavigationMenuLink>
-                  </Link>
-                </NavigationMenuItem>
-              </>
-            )}
-          </NavigationMenuList>
-        </NavigationMenu>
-        
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           {user ? (
             <>
-              <div className="hidden md:block">
-                <div className="text-sm text-muted-foreground">Balance</div>
-                <div className="font-medium">{user.balance.toFixed(2)} KES</div>
-              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex flex-col items-center text-xs"
+                asChild
+              >
+                <Link to="/">
+                  <Home className="h-5 w-5 mb-1" />
+                  Home
+                </Link>
+              </Button>
               
               <Button 
-                variant="outline" 
-                onClick={logout}
+                variant="ghost" 
+                size="sm"
+                className="flex flex-col items-center text-xs"
+                asChild
               >
+                <Link to="/wallet">
+                  <Wallet className="h-5 w-5 mb-1" />
+                  Wallet
+                  {user && (
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full px-1">
+                      {user.balance.toFixed(0)}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex flex-col items-center text-xs"
+                asChild
+              >
+                <Link to="/settings">
+                  <Settings className="h-5 w-5 mb-1" />
+                  Settings
+                </Link>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex flex-col items-center text-xs"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5 mb-1" />
                 Logout
               </Button>
             </>
           ) : (
             <>
-              <Link to="/login">
-                <Button variant="outline">Login</Button>
-              </Link>
-              <Link to="/register">
-                <Button>Register</Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex flex-col items-center text-xs"
+                asChild
+              >
+                <Link to="/login">
+                  <User className="h-5 w-5 mb-1" />
+                  Login
+                </Link>
+              </Button>
             </>
           )}
         </div>

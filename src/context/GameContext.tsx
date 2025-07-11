@@ -1,247 +1,248 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Game, Bet } from '@/types';
+import { GameState, Bet } from '@/types';
 import { useAuth } from './AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 
 interface GameContextType {
-  game: Game | null;
-  bets: Bet[];
-  currentMultiplier: number;
-  isGameRunning: boolean;
-  roundNumber: number;
+  gameState: GameState;
+  bet1: Bet | null;
+  bet2: Bet | null;
   placeBet: (amount: number, autoCashout: number | null, betNumber: 1 | 2) => void;
   cashout: (betNumber: 1 | 2) => void;
   resetBets: () => void;
+  history: number[];
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, updateBalance } = useAuth();
-  const [game, setGame] = useState<Game | null>(null);
-  const [bets, setBets] = useState<Bet[]>([]);
-  const [currentMultiplier, setCurrentMultiplier] = useState(1);
-  const [isGameRunning, setIsGameRunning] = useState(false);
-  const [roundNumber, setRoundNumber] = useState(1);
-  const [crashPoint, setCrashPoint] = useState(0);
+  const [gameState, setGameState] = useState<GameState>({
+    status: 'waiting',
+    currentMultiplier: 1.00,
+    crashPoint: 0,
+    countdown: 30,
+    round: 1,
+  });
+  const [bet1, setBet1] = useState<Bet | null>(null);
+  const [bet2, setBet2] = useState<Bet | null>(null);
+  const [history, setHistory] = useState<number[]>([]);
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [gameInterval, setGameInterval] = useState<NodeJS.Timeout | null>(null);
-  const [countdownInterval, setCountdownInterval] = useState<NodeJS.Timeout | null>(null);
-  const [countdown, setCountdown] = useState(30);
 
-  // Determine crash point based on round number
-  useEffect(() => {
-    let newCrashPoint = 0;
-    if (roundNumber >= 1 && roundNumber <= 10) {
-      newCrashPoint = 20;
-    } else if (roundNumber >= 11 && roundNumber <= 20) {
-      newCrashPoint = 60;
-    } else if (roundNumber >= 21 && roundNumber <= 30) {
-      newCrashPoint = 200;
-    } else if (roundNumber >= 31 && roundNumber <= 40) {
-      newCrashPoint = 600;
-    } else if (roundNumber >= 41 && roundNumber <= 50) {
-      newCrashPoint = 1000;
-    } else {
-      // Reset to first round pattern after 50 rounds
-      newCrashPoint = 20;
-    }
-    setCrashPoint(newCrashPoint);
-  }, [roundNumber]);
-
-  // Start countdown for next game
-  const startCountdown = () => {
-    setCountdown(30);
-    setIsGameRunning(false);
-    setCurrentMultiplier(1);
-    
-    if (countdownInterval) clearInterval(countdownInterval);
-    
-    const interval = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          startGame();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    setCountdownInterval(interval);
+  // Calculate crash point based on round number
+  const calculateCrashPoint = (round: number): number => {
+    if (round <= 10) return 20;
+    if (round <= 20) return 60;
+    if (round <= 30) return 200;
+    if (round <= 40) return 600;
+    return 1000;
   };
 
-  // Start the game
+  // Start countdown for next round
+  const startCountdown = () => {
+    setGameState(prev => ({
+      ...prev,
+      status: 'waiting',
+      currentMultiplier: 1.00,
+      countdown: 30
+    }));
+
+    const interval = setInterval(() => {
+      setGameState(prev => {
+        if (prev.countdown <= 1) {
+          clearInterval(interval);
+          startGame();
+          return {
+            ...prev,
+            countdown: 0,
+            status: 'flying'
+          };
+        }
+        return {
+          ...prev,
+          countdown: prev.countdown - 1
+        };
+      });
+    }, 1000);
+
+    setTimer(interval);
+  };
+
+  // Start the game (plane flying)
   const startGame = () => {
-    setIsGameRunning(true);
-    setCurrentMultiplier(1);
+    // Set crash point for this round
+    const crashPoint = calculateCrashPoint(gameState.round);
     
-    const newGame: Game = {
-      id: Math.random().toString(),
-      crashPoint: crashPoint,
-      startedAt: new Date(),
-      status: 'running',
-      round: roundNumber,
-    };
-    
-    setGame(newGame);
-    
-    if (gameInterval) clearInterval(gameInterval);
-    
+    setGameState(prev => ({
+      ...prev,
+      crashPoint,
+      status: 'flying',
+      currentMultiplier: 1.00
+    }));
+
     // Increase multiplier over time
     const interval = setInterval(() => {
-      setCurrentMultiplier(prev => {
-        const newMultiplier = parseFloat((prev * 1.05).toFixed(2));
-        
+      setGameState(prev => {
         // Check for auto cashouts
-        bets.forEach(bet => {
-          if (bet.status === 'pending' && bet.autoCashout && newMultiplier >= bet.autoCashout) {
-            cashoutBet(bet.id, newMultiplier);
-          }
-        });
-        
-        // Check if we've reached the crash point
-        if (newMultiplier >= crashPoint) {
-          endGame();
-          return crashPoint;
+        if (bet1 && bet1.active && bet1.autoCashout && prev.currentMultiplier >= bet1.autoCashout) {
+          cashout(1);
         }
         
-        return newMultiplier;
+        if (bet2 && bet2.active && bet2.autoCashout && prev.currentMultiplier >= bet2.autoCashout) {
+          cashout(2);
+        }
+
+        // Check if we've reached the crash point
+        if (prev.currentMultiplier >= prev.crashPoint) {
+          clearInterval(interval);
+          handleCrash();
+          return {
+            ...prev,
+            status: 'crashed',
+            currentMultiplier: prev.crashPoint
+          };
+        }
+
+        // Increase multiplier (faster as it gets higher)
+        const increment = prev.currentMultiplier * 0.05;
+        return {
+          ...prev,
+          currentMultiplier: parseFloat((prev.currentMultiplier + increment).toFixed(2))
+        };
       });
-    }, 100); // Update every 100ms for smoother animation
-    
+    }, 100); // Update every 100ms for smooth animation
+
     setGameInterval(interval);
   };
 
-  // End the game
-  const endGame = () => {
-    if (gameInterval) clearInterval(gameInterval);
+  // Handle game crash
+  const handleCrash = () => {
+    // Add to history
+    setHistory(prev => [gameState.crashPoint, ...prev].slice(0, 10));
     
-    // Mark all pending bets as lost
-    const updatedBets = bets.map(bet => 
-      bet.status === 'pending' ? { ...bet, status: 'lost' } : bet
-    );
-    
-    setBets(updatedBets);
-    
-    if (game) {
-      setGame({
-        ...game,
-        status: 'finished',
-        endedAt: new Date(),
-      });
+    // Handle any active bets as lost
+    if (bet1 && bet1.active) {
+      setBet1(prev => prev ? { ...prev, active: false, cashedOut: false } : null);
     }
     
-    // Increment round number
-    setRoundNumber(prev => (prev % 50) + 1);
-    
-    // Start countdown for next game
+    if (bet2 && bet2.active) {
+      setBet2(prev => prev ? { ...prev, active: false, cashedOut: false } : null);
+    }
+
+    // Move to next round after a short delay
     setTimeout(() => {
+      setGameState(prev => ({
+        ...prev,
+        round: prev.round + 1,
+      }));
       startCountdown();
-    }, 3000); // Show crash for 3 seconds before starting countdown
+    }, 3000);
   };
 
   // Place a bet
   const placeBet = (amount: number, autoCashout: number | null, betNumber: 1 | 2) => {
-    if (!user || isGameRunning) return;
+    if (!user || gameState.status !== 'waiting') return;
     
     // Check if user has enough balance
     if (user.balance < amount) return;
     
-    // Check if user already has a bet with this number
-    const existingBetIndex = bets.findIndex(
-      bet => bet.userId === user.id && bet.id.endsWith(`-${betNumber}`)
-    );
-    
-    if (existingBetIndex !== -1) {
-      // Replace existing bet
-      const updatedBets = [...bets];
-      updatedBets.splice(existingBetIndex, 1);
-      setBets(updatedBets);
-    }
-    
-    // Create new bet
     const newBet: Bet = {
-      id: `${user.id}-${betNumber}`,
+      id: uuidv4(),
       amount,
       autoCashout,
-      userId: user.id,
-      gameId: game?.id || 'waiting',
-      status: 'pending',
-      createdAt: new Date(),
+      potentialWin: 0, // Will be calculated based on cashout
+      active: true,
+      cashedOut: false,
+      cashoutMultiplier: null,
+      winAmount: null
     };
     
-    setBets([...bets, newBet]);
+    if (betNumber === 1) {
+      setBet1(newBet);
+    } else {
+      setBet2(newBet);
+    }
     
-    // Deduct amount from user balance
-    updateBalance(user.balance - amount);
+    // Deduct from balance
+    updateBalance(-amount);
   };
 
   // Cash out a bet
   const cashout = (betNumber: 1 | 2) => {
-    if (!user || !isGameRunning) return;
+    const currentBet = betNumber === 1 ? bet1 : bet2;
+    if (!currentBet || !currentBet.active || gameState.status !== 'flying') return;
     
-    const betId = `${user.id}-${betNumber}`;
-    cashoutBet(betId, currentMultiplier);
-  };
-
-  // Helper function to process cashout
-  const cashoutBet = (betId: string, multiplier: number) => {
-    const betIndex = bets.findIndex(bet => bet.id === betId && bet.status === 'pending');
+    const winAmount = currentBet.amount * gameState.currentMultiplier;
     
-    if (betIndex === -1) return;
-    
-    const bet = bets[betIndex];
-    const winnings = bet.amount * multiplier;
-    
-    // Update bet
-    const updatedBets = [...bets];
-    updatedBets[betIndex] = {
-      ...bet,
-      status: 'won',
-      cashoutMultiplier: multiplier,
-      winnings,
-    };
-    
-    setBets(updatedBets);
-    
-    // Add winnings to user balance
-    if (user) {
-      updateBalance(user.balance + winnings);
+    if (betNumber === 1) {
+      setBet1({
+        ...currentBet,
+        active: false,
+        cashedOut: true,
+        cashoutMultiplier: gameState.currentMultiplier,
+        winAmount
+      });
+    } else {
+      setBet2({
+        ...currentBet,
+        active: false,
+        cashedOut: true,
+        cashoutMultiplier: gameState.currentMultiplier,
+        winAmount
+      });
     }
     
-    // If all bets are cashed out, end the game
-    const pendingBets = updatedBets.filter(b => b.status === 'pending' && b.userId === user?.id);
-    if (pendingBets.length === 0 && user) {
-      endGame();
+    // Add winnings to balance
+    updateBalance(winAmount);
+    
+    // If both bets are cashed out, end the round
+    const otherBet = betNumber === 1 ? bet2 : bet1;
+    if (!otherBet || !otherBet.active) {
+      if (gameInterval) clearInterval(gameInterval);
+      if (timer) clearInterval(timer);
+      
+      // Move to next round
+      setGameState(prev => ({
+        ...prev,
+        status: 'crashed',
+        round: prev.round + 1,
+      }));
+      
+      setTimeout(() => {
+        startCountdown();
+      }, 2000);
     }
   };
 
-  // Reset bets for a new game
+  // Reset bets for new round
   const resetBets = () => {
-    setBets([]);
+    setBet1(null);
+    setBet2(null);
   };
 
-  // Start the initial countdown when component mounts
+  // Start the game when component mounts
   useEffect(() => {
     startCountdown();
     
+    // Cleanup intervals on unmount
     return () => {
+      if (timer) clearInterval(timer);
       if (gameInterval) clearInterval(gameInterval);
-      if (countdownInterval) clearInterval(countdownInterval);
     };
   }, []);
 
   return (
     <GameContext.Provider
       value={{
-        game,
-        bets,
-        currentMultiplier,
-        isGameRunning,
-        roundNumber,
+        gameState,
+        bet1,
+        bet2,
         placeBet,
         cashout,
         resetBets,
+        history
       }}
     >
       {children}

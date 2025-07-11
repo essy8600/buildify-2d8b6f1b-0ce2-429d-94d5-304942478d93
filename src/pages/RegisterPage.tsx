@@ -5,25 +5,12 @@ import RegisterForm from '@/components/auth/RegisterForm';
 
 const RegisterPage: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-900 text-white">
       <GameNavbar />
       
-      <main className="flex-1 container mx-auto py-12 px-4 md:px-6 flex items-center justify-center">
+      <div className="container mx-auto px-4 py-12">
         <RegisterForm />
-      </main>
-      
-      <footer className="border-t py-6">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} Aviator Bet. All rights reserved.
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <a href="https://blogwriter.uk" className="hover:underline">blogwriter.uk</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 };
